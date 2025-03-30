@@ -1,10 +1,11 @@
-# gauzy - Probabilistic Data Structures for Gleam
+# gauzy - probabilistic set membership filters for Gleam
 
 [![Package Version](https://img.shields.io/hexpm/v/gauzy)](https://hex.pm/packages/gauzy)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gauzy/)
 
-gauzy is a Gleam library providing flexible implementations of probabilistic data structures. These data structures offer space-efficient alternatives to traditional collections with controllable accuracy trade-offs.
+gauzy is a Gleam library providing flexible implementations of probabilistic set membership filters. These filters offer space-efficient alternatives to traditional collections with controllable accuracy trade-offs.
 
+*NOTE: This library is a WIP and currently only provides Bloom filters!*
 ## Installation
 
 ```sh
@@ -52,7 +53,7 @@ pub fn main() {
   let assert Ok(filter) = bloom_filter.new(
     capacity: 10_000,
     target_error_rate: 0.01,
-    with_hashes: hash_pair,
+    with_hashes: hash_fn_pair,
   )
 
   // Insert items
