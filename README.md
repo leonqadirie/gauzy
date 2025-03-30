@@ -5,6 +5,7 @@
 
 gauzy is a Gleam library providing flexible implementations of probabilistic data structures. These data structures offer space-efficient alternatives to traditional collections with controllable accuracy trade-offs.
 
+*NOTE: This library is a WIP and currently only provides Bloom filters!*
 ## Installation
 
 ```sh
