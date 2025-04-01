@@ -70,7 +70,7 @@ pub fn main() {
   let error_rate = bloom_filter.error_rate(filter)
   let hash_count = bloom_filter.hash_fn_count(filter)
 
-  // Reset the filter to empty state
+  // Returns an equivalent empty filter
   let empty_filter = bloom_filter.reset(filter)
 }
 ```
