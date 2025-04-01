@@ -3,7 +3,7 @@
 [![Package Version](https://img.shields.io/hexpm/v/gauzy)](https://hex.pm/packages/gauzy)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gauzy/)
 
-gauzy is a Gleam library providing flexible implementations of probabilistic set membership filters. These filters offer space-efficient alternatives to traditional collections with controllable accuracy trade-offs.
+gauzy is a Gleam library providing flexible implementations of probabilistic set membership filters. These filters offer space-efficient alternatives to traditional collections for set membership checks with controllable accuracy trade-offs.
 
 *NOTE: This library is a WIP and currently only provides Bloom filters!*
 ## Installation
@@ -16,9 +16,8 @@ gleam add gauzy@1
 
 Probabilistic data structures are specialized data structures that use randomization to achieve compact representation with controlled error rates. They're particularly useful when:
 
-- Processing massive datasets with limited memory
+- Processing large datasets with limited memory
 - Approximate answers are acceptable
-- Perfect accuracy isn't required but fast performance is critical
 
 ## Available Data Structures
 
@@ -39,7 +38,10 @@ import gauzy/bloom_filter
 import murmur3a
 
 pub fn main() {
-  // Use your own hash functions here. They must output an integer hash digest.
+  // Use your own hash functions here. They:
+  // - must output an integer hash digest.
+  // - should ideally be independent and uniformly distributed
+  // - are not required to be cryptographic
   let hash_fn_1 = fn(string_item) {
     murmur3a.hash_string(string_item, 0) |> murmur3a.int_digest
   }
@@ -67,10 +69,10 @@ pub fn main() {
 
   // Get filter properties
   let size = bloom_filter.bit_size(filter)
-  let error_rate = bloom_filter.error_rate(filter)
+  let error_rate = bloom_filter.false_positive_rate(filter)
   let hash_count = bloom_filter.hash_fn_count(filter)
 
-  // Reset the filter to empty state
+  // Returns an equivalent empty filter
   let empty_filter = bloom_filter.reset(filter)
 }
 ```
