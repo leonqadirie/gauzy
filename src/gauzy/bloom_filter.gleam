@@ -86,7 +86,7 @@ pub fn new(
   capacity capacity: Int,
   target_error_rate target_error_rate: Float,
   with_hashes hash_function_pair: HashFunctionPair(a),
-) {
+) -> Result(BloomFilter(a), BloomFilterError) {
   use <- bool.guard(capacity < 1, Error(InvalidCapacity))
   use <- bool.guard(
     target_error_rate <=. 0.0 || 1.0 <=. target_error_rate,
@@ -109,7 +109,10 @@ pub fn new(
 ///
 /// * `filter`: The `BloomFilter` to insert into.
 /// * `item`: The item to insert.
-pub fn try_insert(filter: BloomFilter(a), item: a) {
+pub fn try_insert(
+  filter: BloomFilter(a),
+  item: a,
+) -> Result(BloomFilter(a), BloomFilterError) {
   let indices = get_bit_indices(filter, item)
 
   let array =
@@ -126,7 +129,7 @@ pub fn try_insert(filter: BloomFilter(a), item: a) {
 ///
 /// * `filter`: The `BloomFilter` to check
 /// * `item`: The item to check for
-pub fn might_contain(filter: BloomFilter(a), item: a) {
+pub fn might_contain(filter: BloomFilter(a), item: a) -> Bool {
   get_bit_indices(filter, item)
   |> list.all(fn(idx) {
     case iv.get(filter.array, idx) {
@@ -139,28 +142,28 @@ pub fn might_contain(filter: BloomFilter(a), item: a) {
 /// Returns the size of the `BloomFilter`'s underlying bit array.
 ///
 /// * `filter`: The `BloomFilter` to get the size from
-pub fn bit_size(filter filter: BloomFilter(a)) {
+pub fn bit_size(filter filter: BloomFilter(a)) -> Int {
   filter.bit_size
 }
 
 /// Returns the `BloomFilter`'s actual false positive rate
 ///
 /// * `filter`: The `BloomFilter` to get the error rate from.
-pub fn error_rate(filter filter: BloomFilter(a)) {
+pub fn error_rate(filter filter: BloomFilter(a)) -> Float {
   filter.error_rate
 }
 
 /// Returns the number of hash functions the `BloomFilter` uses.
 ///
 /// * `filter`: The `BloomFilter` to get the hash function count from
-pub fn hash_fn_count(filter filter: BloomFilter(a)) {
+pub fn hash_fn_count(filter filter: BloomFilter(a)) -> Int {
   filter.hash_fn_count
 }
 
 /// Returns an empty `BloomFilter` with the same characteristics as the input filter.
 ///
 /// * `filter`: The `BloomFilter` to reset
-pub fn reset(filter: BloomFilter(a)) {
+pub fn reset(filter: BloomFilter(a)) -> BloomFilter(a) {
   let BloomFilter(
     _filter,
     bit_size:,
@@ -185,7 +188,7 @@ pub fn reset(filter: BloomFilter(a)) {
 /// * `target_err_rate`: The Bloom filter's acceptable false positive rate
 ///
 /// Returns *approximately* optimal (num_bits, hash_fn_count, error_rate).
-fn optimize(capacity: Int, target_error_rate: Float) {
+fn optimize(capacity: Int, target_error_rate: Float) -> #(Int, Int, Float) {
   let #(num_bits, hash_fn_count, error_rate) =
     optimize_values(
       int.to_float(capacity),
@@ -214,7 +217,7 @@ fn optimize_values(
   num_bits: Float,
   hash_fns_count: Float,
   target_error_rate: Float,
-) {
+) -> #(Float, Float, Float) {
   let error_rate = false_positive_rate(num_bits, capacity, hash_fns_count)
 
   let is_acceptable_error_rate = error_rate <. target_error_rate
@@ -241,7 +244,11 @@ fn optimize_values(
 /// * `hash_fns_count`: The number of hash functions the filter uses
 ///
 /// Returns an `f64` as the expected false positive rate.
-fn false_positive_rate(bits: Float, capacity: Float, hash_fn_count: Float) {
+fn false_positive_rate(
+  bits: Float,
+  capacity: Float,
+  hash_fn_count: Float,
+) -> Float {
   let assert Ok(false_positive_rate) =
     1.0
     -. float.exponential(
@@ -257,7 +264,7 @@ fn false_positive_rate(bits: Float, capacity: Float, hash_fn_count: Float) {
 ///
 /// * `bits`: The number of bits that constitute the filter
 /// * `capacity`: The number of elements that the filter shall be able to hold
-fn optimal_hash_fn_count(bits: Float, capacity: Float) {
+fn optimal_hash_fn_count(bits: Float, capacity: Float) -> Float {
   let assert Ok(ln_2) = float.logarithm(2.0)
   bits /. capacity *. ln_2
 }
