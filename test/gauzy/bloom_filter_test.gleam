@@ -36,25 +36,25 @@ pub fn new_hash_function_pair_test() {
 }
 
 pub fn new_bloom_filter_test() {
-  let assert Ok(bloom) =
+  let assert Ok(filter) =
     bloom_filter.new(100, 0.001, hash_function_pair_fixture())
 
-  bloom_filter.hash_fn_count(bloom)
+  bloom_filter.hash_fn_count(filter)
   |> should.equal(10)
 
-  bloom_filter.bit_size(bloom) |> should.equal(1438)
+  bloom_filter.bit_size(filter) |> should.equal(1438)
 
-  bloom_filter.false_positive_rate(bloom)
+  bloom_filter.false_positive_rate(filter)
   |> should.equal(0.0009988641329808895)
 
-  let assert Ok(small_bloom) =
+  let assert Ok(small_filter) =
     bloom_filter.new(1, 0.1, hash_function_pair_fixture())
-  bloom_filter.hash_fn_count(small_bloom)
+  bloom_filter.hash_fn_count(small_filter)
   |> should.equal(3)
 
-  bloom_filter.bit_size(small_bloom) |> should.equal(5)
+  bloom_filter.bit_size(small_filter) |> should.equal(5)
 
-  bloom_filter.false_positive_rate(small_bloom)
+  bloom_filter.false_positive_rate(small_filter)
   |> should.equal(0.09184883923294047)
 
   bloom_filter.new(0, 0.5, hash_function_pair_fixture()) |> should.be_error
@@ -65,19 +65,19 @@ pub fn new_bloom_filter_test() {
 pub fn it_works_test() {
   let capacity = 1000
   let target_err_rate = 0.001
-  let assert Ok(bloom) =
+  let assert Ok(filter) =
     bloom_filter.new(capacity, target_err_rate, hash_function_pair_fixture())
 
-  let assert Ok(bloom) =
+  let assert Ok(filter) =
     list.range(0, capacity - 1)
-    |> list.try_fold(bloom, fn(bloom, element) {
+    |> list.try_fold(filter, fn(bloom, element) {
       bloom_filter.try_insert(bloom, [element])
     })
 
   list.range(0, capacity - 1)
-  |> list.all(fn(element) { bloom_filter.might_contain(bloom, [element]) })
+  |> list.all(fn(element) { bloom_filter.might_contain(filter, [element]) })
   |> should.be_true
 
-  bloom_filter.might_contain(bloom, [capacity, capacity])
+  bloom_filter.might_contain(filter, [capacity, capacity])
   |> should.be_false
 }
