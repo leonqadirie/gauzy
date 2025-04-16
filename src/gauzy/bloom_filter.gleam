@@ -94,7 +94,7 @@ pub fn new(
   let bit_size = optimal_bit_size(capacity, target_error_rate)
   let hash_fn_count = optimal_hash_fn_count(bit_size, capacity)
   let false_positive_rate =
-    optimal_false_positive_rate(bit_size, capacity, hash_fn_count)
+    actual_false_positive_rate(bit_size, capacity, hash_fn_count)
   Ok(BloomFilter(
     array: iv.repeat(0, bit_size),
     bit_size:,
@@ -209,7 +209,7 @@ fn optimal_hash_fn_count(bit_size: Int, capacity: Int) {
   int.to_float(bit_size) /. int.to_float(capacity) *. ln_2 |> float.round
 }
 
-/// Calculates the false positive rate of a Bloom filter with the properties of the parameters.
+/// Calculates the actual false positive rate of a `Bloomfilter`.
 /// Used in filter construction.
 ///
 /// * `bit_size`: The number of bits that constitute the filter
@@ -217,7 +217,7 @@ fn optimal_hash_fn_count(bit_size: Int, capacity: Int) {
 /// * `hash_fns_count`: The number of hash functions the filter uses
 ///
 /// Returns an `f64` as the expected false positive rate.
-fn optimal_false_positive_rate(
+fn actual_false_positive_rate(
   bit_size: Int,
   capacity: Int,
   hash_fn_count: Int,
