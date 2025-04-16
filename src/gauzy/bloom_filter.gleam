@@ -109,8 +109,8 @@ pub fn new(
 /// * `filter`: The `BloomFilter` to insert into.
 /// * `item`: The item to insert.
 pub fn try_insert(
-  filter: BloomFilter(a),
-  item: a,
+  in filter: BloomFilter(a),
+  insert item: a,
 ) -> Result(BloomFilter(a), BloomFilterError) {
   let indices = get_bit_indices(filter, item)
 
@@ -128,7 +128,7 @@ pub fn try_insert(
 ///
 /// * `filter`: The `BloomFilter` to check
 /// * `item`: The item to check for
-pub fn might_contain(filter: BloomFilter(a), item: a) -> Bool {
+pub fn might_contain(in filter: BloomFilter(a), search item: a) -> Bool {
   get_bit_indices(filter, item)
   |> list.all(fn(idx) {
     case iv.get(filter.array, idx) {
@@ -162,7 +162,7 @@ pub fn hash_fn_count(filter filter: BloomFilter(a)) -> Int {
 /// Returns an empty `BloomFilter` with the same characteristics as the input filter.
 ///
 /// * `filter`: The `BloomFilter` to reset
-pub fn reset(filter: BloomFilter(a)) -> BloomFilter(a) {
+pub fn reset(filter filter: BloomFilter(a)) -> BloomFilter(a) {
   let BloomFilter(
     _filter,
     bit_size:,
