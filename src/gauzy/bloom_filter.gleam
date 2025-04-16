@@ -95,6 +95,7 @@ pub fn new(
   let hash_fn_count = optimal_hash_fn_count(bit_size, capacity)
   let false_positive_rate =
     actual_false_positive_rate(bit_size, capacity, hash_fn_count)
+
   Ok(BloomFilter(
     array: iv.repeat(0, bit_size),
     bit_size:,
@@ -118,6 +119,7 @@ pub fn try_insert(
     list.try_fold(indices, filter.array, fn(array, idx) {
       iv.set(array, idx, 1)
     })
+
   case array {
     Ok(array) -> Ok(BloomFilter(..filter, array:))
     Error(_err) -> Error(InsertionError)
@@ -192,6 +194,7 @@ fn optimal_bit_size(capacity: Int, target_err_rate: Float) {
   let assert Ok(ln_2_squared) = float.power(ln_2, 2.0)
   // No panic possible as `target_err_rate` is clearly defined
   let assert Ok(ln_target_err_rate) = float.logarithm(target_err_rate)
+
   -1.0 *. { int.to_float(capacity) *. ln_target_err_rate } /. ln_2_squared
   |> float.ceiling
   |> float.round
