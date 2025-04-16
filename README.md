@@ -67,7 +67,7 @@ pub fn main() {
 
   // Get filter properties
   let size = bloom_filter.bit_size(filter)
-  let error_rate = bloom_filter.error_rate(filter)
+  let error_rate = bloom_filter.false_positive_rate(filter)
   let hash_count = bloom_filter.hash_fn_count(filter)
 
   // Returns an equivalent empty filter

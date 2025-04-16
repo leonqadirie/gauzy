@@ -40,12 +40,22 @@ pub fn new_bloom_filter_test() {
     bloom_filter.new(100, 0.001, hash_function_pair_fixture())
 
   bloom_filter.hash_fn_count(bloom)
-  |> should.equal(11)
+  |> should.equal(10)
 
-  bloom_filter.error_rate(bloom)
-  |> should.equal(0.0009855809404929945)
+  bloom_filter.bit_size(bloom) |> should.equal(1438)
 
-  bloom_filter.bit_size(bloom) |> should.equal(1449)
+  bloom_filter.false_positive_rate(bloom)
+  |> should.equal(0.0009988641329808895)
+
+  let assert Ok(small_bloom) =
+    bloom_filter.new(1, 0.1, hash_function_pair_fixture())
+  bloom_filter.hash_fn_count(small_bloom)
+  |> should.equal(3)
+
+  bloom_filter.bit_size(small_bloom) |> should.equal(5)
+
+  bloom_filter.false_positive_rate(small_bloom)
+  |> should.equal(0.09184883923294047)
 
   bloom_filter.new(0, 0.5, hash_function_pair_fixture()) |> should.be_error
   bloom_filter.new(100, 0.0, hash_function_pair_fixture()) |> should.be_error
