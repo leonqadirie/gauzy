@@ -1,4 +1,4 @@
-# gauzy - probabilistic set membership filters for Gleam
+# gauzy - Probabilistic Set Membership Filters for Gleam
 
 [![Package Version](https://img.shields.io/hexpm/v/gauzy)](https://hex.pm/packages/gauzy)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gauzy/)
@@ -12,7 +12,7 @@ gauzy is a Gleam library providing flexible implementations of probabilistic set
 gleam add gauzy@1
 ```
 
-## Overview
+---
 
 Probabilistic data structures are specialized data structures that use randomization to achieve compact representation with controlled error rates. They're particularly useful when:
 
@@ -51,7 +51,7 @@ pub fn main() {
   let assert Ok(hash_fn_pair) =
     bloom_filter.new_hash_fn_pair(hash_fn_1, hash_fn_2)
 
-  // Create a new Bloom filter that can hold ~10,000 items while maintaining a 1% false positive rate
+  // Expect to store ~10,000 items, allow 1% error rate
   let assert Ok(filter) = bloom_filter.new(
     capacity: 10_000,
     target_error_rate: 0.01,
@@ -84,3 +84,34 @@ Further documentation can be found at <https://hexdocs.pm/gauzy>.
 ```sh
 gleam test  # Run the tests
 ```
+
+---
+
+## Error Handling
+
+All creation and insertion operations return a `Result`. Possible errors:
+- `EqualHashFunctions` — Hash functions passed are not independent.
+- `InvalidCapacity` — Capacity must be positive.
+- `InvalidTargetErrorRate` — Error rate should be in (0.0, 1.0).
+- `InsertionError` — Should only occur if an internal array index calculation fails (unexpected; report as a bug if encountered).
+
+Check/handle errors using Gleam’s `Result` type.
+
+---
+
+## Contributing
+
+- Run tests with:
+  ```sh
+  gleam test
+  ```
+- Please open issues or submit pull requests!
+
+---
+
+## Further Information
+
+- [Hexdocs](https://hexdocs.pm/gauzy/)
+- [Bloom filter primer (Wikipedia)](https://en.wikipedia.org/wiki/Bloom_filter)
+
+---

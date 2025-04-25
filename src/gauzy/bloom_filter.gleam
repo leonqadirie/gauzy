@@ -13,6 +13,7 @@
 //// resetting Bloom filters.
 //// Optimization step size for finding optimal Bloom filter parameters.
 
+import gauzy/internal/primes
 import gleam/bool
 import gleam/float
 import gleam/int
@@ -72,8 +73,6 @@ pub opaque type BloomFilter(a) {
     false_positive_rate: Float,
     /// The pair of hash functions used to generate indices.
     hash_function_pair: HashFunctionPair(a),
-    /// The number of index ranges for Kirsch-Mitzenmacher optimization
-    chunk_count: Int,
     /// The size of index ranges for Kirsch-Mitzenmacher optimization
     chunk_size: Int,
   )
@@ -96,18 +95,14 @@ pub fn new(
   )
 
   let optimal_bit_size = optimal_bit_size(capacity, target_error_rate)
-  let hash_fn_count = optimal_hash_fn_count(optimal_bit_size, capacity) |> echo
-  let bit_size =
-    case optimal_bit_size % hash_fn_count {
-      0 -> optimal_bit_size
-      _ ->
-        optimal_bit_size + { hash_fn_count - optimal_bit_size % hash_fn_count }
-    }
-    |> echo
+  let hash_fn_count = optimal_hash_fn_count(optimal_bit_size, capacity)
+  let bit_size = case optimal_bit_size % hash_fn_count {
+    0 -> optimal_bit_size
+    _ -> optimal_bit_size + { hash_fn_count - optimal_bit_size % hash_fn_count }
+  }
   let false_positive_rate =
     actual_false_positive_rate(bit_size, capacity, hash_fn_count)
-  let chunk_count = bit_size / hash_fn_count |> echo
-  let chunk_size = bit_size / chunk_count |> echo
+  let chunk_size = bit_size / hash_fn_count
 
   Ok(BloomFilter(
     array: iv.repeat(0, bit_size),
@@ -115,7 +110,6 @@ pub fn new(
     false_positive_rate:,
     hash_fn_count:,
     hash_function_pair:,
-    chunk_count:,
     chunk_size:,
   ))
 }
@@ -180,25 +174,7 @@ pub fn hash_fn_count(filter filter: BloomFilter(a)) -> Int {
 ///
 /// * `filter`: The `BloomFilter` to reset
 pub fn reset(filter filter: BloomFilter(a)) -> BloomFilter(a) {
-  let BloomFilter(
-    _filter,
-    bit_size:,
-    false_positive_rate:,
-    hash_fn_count:,
-    hash_function_pair:,
-    chunk_count:,
-    chunk_size:,
-  ) = filter
-
-  BloomFilter(
-    array: iv.repeat(0, bit_size),
-    bit_size:,
-    false_positive_rate:,
-    hash_fn_count:,
-    hash_function_pair:,
-    chunk_count:,
-    chunk_size:,
-  )
+  BloomFilter(..filter, array: iv.repeat(0, filter.bit_size))
 }
 
 /// Calculates the optimal size in bits of a Bloom filter.
@@ -267,17 +243,7 @@ fn actual_false_positive_rate(
 /// * `bloom_filter`: The `BloomFilter` to get the bit indices from
 /// * `item`: The item to calculate the bit indices for
 fn get_bit_indices(filter: BloomFilter(a), item: a) -> List(Int) {
-  let BloomFilter(
-    _array,
-    _bit_size,
-    _target_error_rate,
-    _chunk_count,
-    hash_fn_count:,
-    hash_function_pair:,
-    chunk_size:,
-  ) = filter
-
-  let HashFunctionPair(hash_fn_1:, hash_fn_2:) = hash_function_pair
+  let HashFunctionPair(hash_fn_1:, hash_fn_2:) = filter.hash_function_pair
 
   let hash_1 = case hash_fn_1(item) {
     hash_1 if hash_1 < 0 -> { 2 * hash_1 } |> int.absolute_value
@@ -288,8 +254,8 @@ fn get_bit_indices(filter: BloomFilter(a), item: a) -> List(Int) {
     hash_2 -> hash_2
   }
 
-  list.range(0, hash_fn_count - 1)
+  list.range(0, filter.hash_fn_count - 1)
   |> list.map(fn(i) {
-    i * filter.chunk_size + { hash_1 + i * hash_2 } % chunk_size
+    i * filter.chunk_size + { hash_1 + i * hash_2 } % filter.chunk_size
   })
 }
