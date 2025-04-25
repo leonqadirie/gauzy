@@ -78,6 +78,7 @@ pub fn it_works_test() {
   |> list.all(fn(element) { bloom_filter.might_contain(filter, [element]) })
   |> should.be_true
 
+  // As the `HashFunctionPair` is not pairwise independent.
   bloom_filter.estimate_cardinality(filter)
   |> should.equal(256)
 
@@ -85,6 +86,7 @@ pub fn it_works_test() {
   |> should.be_false
 
   let reset_filter = bloom_filter.reset(filter)
+
   list.range(0, capacity - 1)
   |> list.all(fn(element) {
     bloom_filter.might_contain(reset_filter, [element])

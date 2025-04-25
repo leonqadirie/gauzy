@@ -1,4 +1,4 @@
-//// This module provides an iplementation of a Bloom filter, a space-efficient
+//// This module provides an implementation of a Bloom filter, a space-efficient
 //// probabilistic data structure that is used to test whether an element is a
 //// member of a set. False positive matches are possible, but false negatives
 //// are not – in other words, a query returns either "possibly in set" or
@@ -11,9 +11,7 @@
 ////
 //// The module provides functions for creating, inserting into, querying, and
 //// resetting Bloom filters.
-//// Optimization step size for finding optimal Bloom filter parameters.
 
-import gauzy/internal/primes
 import gleam/bool
 import gleam/float
 import gleam/int
@@ -34,13 +32,13 @@ pub type BloomFilterError {
 
 /// A pair of hash functions used by the Bloom filter.
 ///
-/// `a` is the type of item that the hash functions operate on.
-pub opaque type HashFunctionPair(a) {
+/// `item` is the type for whith the hash functions provide an `Int` digest.
+pub opaque type HashFunctionPair(item) {
   HashFunctionPair(
     /// The first hash function.
-    hash_fn_1: fn(a) -> Int,
+    hash_fn_1: fn(item) -> Int,
     /// The second hash function.
-    hash_fn_2: fn(a) -> Int,
+    hash_fn_2: fn(item) -> Int,
   )
 }
 
@@ -58,10 +56,8 @@ pub fn new_hash_fn_pair(hash_fn_1: fn(a) -> Int, hash_fn_2: fn(a) -> Int) {
   }
 }
 
-/// A Bloom filter data structure.
-///
-/// `a` is the type of item that can be stored in the filter.
-pub opaque type BloomFilter(a) {
+/// A space-efficient data structure to probabilistically check set membership.
+pub opaque type BloomFilter(item) {
   BloomFilter(
     /// The underlying bit array.
     array: Array(Int),
@@ -72,7 +68,7 @@ pub opaque type BloomFilter(a) {
     /// The actual false positive rate.
     false_positive_rate: Float,
     /// The pair of hash functions used to generate indices.
-    hash_function_pair: HashFunctionPair(a),
+    hash_function_pair: HashFunctionPair(item),
     /// The size of index ranges for Kirsch-Mitzenmacher optimization
     chunk_size: Int,
   )
@@ -86,7 +82,7 @@ pub opaque type BloomFilter(a) {
 pub fn new(
   capacity capacity: Int,
   target_error_rate target_error_rate: Float,
-  with_hash_functions hash_function_pair: HashFunctionPair(a),
+  hash_function_pair hash_function_pair: HashFunctionPair(a),
 ) -> Result(BloomFilter(a), BloomFilterError) {
   use <- bool.guard(capacity < 1, Error(InvalidCapacity))
   use <- bool.guard(
@@ -151,22 +147,22 @@ pub fn might_contain(in filter: BloomFilter(a), search item: a) -> Bool {
 
 /// Returns the size of the `BloomFilter`'s underlying bit array.
 ///
-/// * `filter`: The `BloomFilter` to get the size from
-pub fn bit_size(filter filter: BloomFilter(a)) -> Int {
+/// * `filter`: The `BloomFilter` from which to get the size
+pub fn bit_size(of filter: BloomFilter(a)) -> Int {
   filter.bit_size
 }
 
 /// Returns the `BloomFilter`'s actual false positive rate
 ///
-/// * `filter`: The `BloomFilter` to get the error rate from.
-pub fn false_positive_rate(filter filter: BloomFilter(a)) -> Float {
+/// * `filter`: The `BloomFilter` from which to get the error rate
+pub fn false_positive_rate(of filter: BloomFilter(a)) -> Float {
   filter.false_positive_rate
 }
 
 /// Returns the number of hash functions the `BloomFilter` uses.
 ///
-/// * `filter`: The `BloomFilter` to get the hash function count from
-pub fn hash_fn_count(filter filter: BloomFilter(a)) -> Int {
+/// * `filter`: The `BloomFilter` from which to get the hash function count
+pub fn hash_fn_count(of filter: BloomFilter(a)) -> Int {
   filter.hash_fn_count
 }
 
@@ -175,8 +171,8 @@ pub fn hash_fn_count(filter filter: BloomFilter(a)) -> Int {
 ///
 /// * `filter`: The `BloomFilter` for which to estimate
 pub fn estimate_cardinality(in filter: BloomFilter(a)) -> Int {
-  let set_bits = iv.fold(filter.array, 0, int.add) |> echo
-  iv.length(filter.array) |> echo
+  let set_bits = iv.fold(filter.array, 0, int.add)
+
   // Can't panic as m > 0, therefore term > 0
   let assert Ok(partial_calc) =
     float.logarithm(

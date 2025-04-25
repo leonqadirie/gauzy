@@ -3,9 +3,17 @@
 [![Package Version](https://img.shields.io/hexpm/v/gauzy)](https://hex.pm/packages/gauzy)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gauzy/)
 
-gauzy is a Gleam library providing flexible implementations of probabilistic set membership filters. These filters offer space-efficient alternatives to traditional collections for set membership checks with controllable accuracy trade-offs.
+Ever need to quickly check if you've seen an item before, without storing *every single item*? That's where `gauzy` comes in!
 
-*NOTE: This library is a WIP and currently only provides Bloom filters!*
+`gauzy` provides **probabilistic set membership filters** for Gleam. Think of them as super memory-efficient ways to ask
+- "Is this item possibly in the set?" or
+- "Is this item *definitely* not in the set?".
+They're great for large datasets where perfect accuracy isn't strictly needed, but speed and low memory usage are important.
+
+**Currently includes:** Bloom filters (more filter types planned!)
+
+---
+
 ## Installation
 
 ```sh
@@ -23,19 +31,18 @@ Probabilistic data structures are specialized data structures that use randomiza
 
 ### Bloom Filter
 
-A Bloom filter is a space-efficient probabilistic data structure used to test whether an element is a member of a set. It can tell you:
-
-- "The element is definitely not in the set" (100% accurate)
-- "The element is probably in the set" (with a controllable false positive rate)
+A Bloom filter is a space-efficient probabilistic data structure used to test whether an element is a member of a set.
 
 Key properties:
 - Zero false negatives (if it says "not in set", it never lies)
 - Configurable false positive rate (might say "in set" when it's not)
 - Memory efficient for large sets
+- Can't delete items - you might need a reset
 
 ```gleam
 import gauzy/bloom_filter
 import murmur3a
+import mumu
 
 pub fn main() {
   // Use your own hash functions here. They:
@@ -43,11 +50,13 @@ pub fn main() {
   // - should ideally be independent and uniformly distributed
   // - are not required to be cryptographic
   let hash_fn_1 = fn(string_item) {
-    murmur3a.hash_string(string_item, 0) |> murmur3a.int_digest
+    murmur3a.hash_string(string_item, 0)
+    |> murmur3a.int_digest
   }
   let hash_fn_2 = fn(string_item) {
-    murmur3a.hash_string(string_item, 1) |> murmur3a.int_digest
+    mumu.hash(string_item)
   }
+
   let assert Ok(hash_fn_pair) =
     bloom_filter.new_hash_fn_pair(hash_fn_1, hash_fn_2)
 
@@ -93,10 +102,10 @@ gleam test  # Run the tests
 ## Error Handling
 
 All creation and insertion operations return a `Result`. Possible errors:
-- `EqualHashFunctions` — Hash functions passed are not independent.
-- `InvalidCapacity` — Capacity must be positive.
-- `InvalidTargetErrorRate` — Error rate should be in (0.0, 1.0).
-- `InsertionError` — Should only occur if an internal array index calculation fails (unexpected; report as a bug if encountered).
+- `EqualHashFunctions` —  Hash functions passed are equal.
+- `InvalidCapacity` —  Capacity must be positive.
+- `InvalidTargetErrorRate` —  Error rate should be in (0.0, 1.0).
+- `InsertionError` —  Should only occur if an internal array index calculation fails (unexpected; report as a bug if encountered).
 
 Check/handle errors using Gleam’s `Result` type.
 
