@@ -78,6 +78,19 @@ pub fn it_works_test() {
   |> list.all(fn(element) { bloom_filter.might_contain(filter, [element]) })
   |> should.be_true
 
+  bloom_filter.estimate_cardinality(filter)
+  |> should.equal(256)
+
   bloom_filter.might_contain(filter, [capacity, capacity])
   |> should.be_false
+
+  let reset_filter = bloom_filter.reset(filter)
+  list.range(0, capacity - 1)
+  |> list.all(fn(element) {
+    bloom_filter.might_contain(reset_filter, [element])
+  })
+  |> should.be_false
+
+  bloom_filter.estimate_cardinality(reset_filter)
+  |> should.equal(0)
 }

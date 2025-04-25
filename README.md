@@ -72,6 +72,9 @@ pub fn main() {
   let error_rate = bloom_filter.false_positive_rate(filter)
   let hash_count = bloom_filter.hash_fn_count(filter)
 
+  // Estimate how many unique items were inserted
+  let estimate = bloom_filter.estimate_cardinality(filter)
+
   // Returns an equivalent empty filter
   let empty_filter = bloom_filter.reset(filter)
 }

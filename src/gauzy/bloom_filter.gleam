@@ -170,6 +170,26 @@ pub fn hash_fn_count(filter filter: BloomFilter(a)) -> Int {
   filter.hash_fn_count
 }
 
+/// Returns an _approximation_ of unique items inserted into the `BloomFilter`.
+/// This can differ substantially from reality, especially in smaller filters.
+///
+/// * `filter`: The `BloomFilter` for which to estimate
+pub fn estimate_cardinality(in filter: BloomFilter(a)) -> Int {
+  let set_bits = iv.fold(filter.array, 0, int.add) |> echo
+  iv.length(filter.array) |> echo
+  // Can't panic as m > 0, therefore term > 0
+  let assert Ok(partial_calc) =
+    float.logarithm(
+      1.0 -. int.to_float(set_bits) /. int.to_float(filter.bit_size),
+    )
+
+  -1.0
+  *. int.to_float(filter.bit_size)
+  /. int.to_float(filter.hash_fn_count)
+  *. partial_calc
+  |> float.round
+}
+
 /// Returns an empty `BloomFilter` with the same characteristics as the input filter.
 ///
 /// * `filter`: The `BloomFilter` to reset
