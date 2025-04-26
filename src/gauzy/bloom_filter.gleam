@@ -223,7 +223,9 @@ fn optimal_bit_size(capacity: Int, target_err_rate: Float) {
 fn optimal_hash_fn_count(bit_size: Int, capacity: Int) {
   // No panic possible as `float.logarithm(2.0)` is clearly defined
   let assert Ok(ln_2) = float.logarithm(2.0)
-  int.to_float(bit_size) /. int.to_float(capacity) *. ln_2 |> float.round
+  int.to_float(bit_size) /. int.to_float(capacity) *. ln_2
+  |> float.round
+  |> int.max(1)
 }
 
 /// Calculates the actual false positive rate of a `Bloomfilter`.
