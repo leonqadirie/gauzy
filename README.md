@@ -17,7 +17,7 @@ They're great for large datasets where perfect accuracy isn't strictly needed, b
 ## Installation
 
 ```sh
-gleam add gauzy@1
+gleam add gauzy@2
 ```
 
 ---
@@ -64,11 +64,11 @@ pub fn main() {
   let assert Ok(filter) = bloom_filter.new(
     capacity: 10_000,
     target_error_rate: 0.01,
-    hash_fn_pair: hash_fn_pair,
+    hash_function_pair: hash_fn_pair,
   )
 
   // Insert items
-  filter = filter
+  let filter = filter
     |> bloom_filter.insert("hello")
     |> bloom_filter.insert("world")
 
