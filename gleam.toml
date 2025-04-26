@@ -1,5 +1,5 @@
 name = "gauzy"
-version = "2.0.0"
+version = "2.0.1"
 
 description = "gauzy is a Gleam library providing flexible implementations of probabilistic data structures"
 licences = ["Apache-2.0"]
