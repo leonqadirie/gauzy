@@ -18,6 +18,9 @@ import gleam/int
 import gleam/list
 import iv.{type Array}
 
+/// The size of an integer within the array
+const word_size = 52
+
 /// Represents errors that can occur during Bloom filter operations.
 pub type BloomFilterError {
   /// The provided hash functions are equal, which is not allowed.
@@ -71,6 +74,8 @@ pub opaque type BloomFilter(item) {
     hash_function_pair: HashFunctionPair(item),
     /// The size of index ranges for Kirsch-Mitzenmacher optimization
     chunk_size: Int,
+    /// The number of word chunks in the array of size `word_size` or smaller
+    word_chunk_count: Int,
   )
 }
 
@@ -99,14 +104,16 @@ pub fn new(
   let false_positive_rate =
     actual_false_positive_rate(bit_size, capacity, hash_fn_count)
   let chunk_size = bit_size / hash_fn_count
+  let word_chunk_count = bit_size / word_size + 1
 
   Ok(BloomFilter(
-    array: iv.repeat(0, bit_size),
+    array: iv.repeat(0, word_chunk_count),
     bit_size:,
     false_positive_rate:,
     hash_fn_count:,
     hash_function_pair:,
     chunk_size:,
+    word_chunk_count:,
   ))
 }
 
@@ -122,7 +129,9 @@ pub fn try_insert(
 
   let array =
     list.try_fold(indices, filter.array, fn(array, idx) {
-      iv.set(array, idx, 1)
+      let word_idx = idx / word_size
+      let mask = int.bitwise_shift_left(1, { idx % word_size })
+      iv.update(array, word_idx, fn(word) { int.bitwise_or(word, mask) })
     })
 
   case array {
@@ -136,12 +145,14 @@ pub fn try_insert(
 /// * `filter`: The `BloomFilter` to check
 /// * `item`: The item to check for
 pub fn might_contain(in filter: BloomFilter(a), search item: a) -> Bool {
+  // let indices =
   get_bit_indices(filter, item)
   |> list.all(fn(idx) {
-    case iv.get(filter.array, idx) {
-      Ok(1) -> True
-      _ -> False
-    }
+    let word_idx = idx / word_size
+    let word = iv.get_or_default(filter.array, word_idx, 0)
+    let mask = int.bitwise_shift_left(1, idx % word_size)
+
+    int.bitwise_and(word, mask) == mask
   })
 }
 
@@ -171,7 +182,10 @@ pub fn hash_fn_count(of filter: BloomFilter(a)) -> Int {
 ///
 /// * `filter`: The `BloomFilter` for which to estimate
 pub fn estimate_cardinality(in filter: BloomFilter(a)) -> Int {
-  let set_bits = iv.fold(filter.array, 0, int.add)
+  let set_bits =
+    iv.fold(filter.array, 0, fn(total_set_bits, word) {
+      total_set_bits + count_set_bits(word)
+    })
 
   // Can't panic as m > 0, therefore term > 0
   let assert Ok(partial_calc) =
@@ -190,7 +204,7 @@ pub fn estimate_cardinality(in filter: BloomFilter(a)) -> Int {
 ///
 /// * `filter`: The `BloomFilter` to reset
 pub fn reset(filter filter: BloomFilter(a)) -> BloomFilter(a) {
-  BloomFilter(..filter, array: iv.repeat(0, filter.bit_size))
+  BloomFilter(..filter, array: iv.repeat(0, filter.word_chunk_count))
 }
 
 /// Calculates the optimal size in bits of a Bloom filter.
@@ -274,4 +288,17 @@ fn get_bit_indices(filter: BloomFilter(a), item: a) -> List(Int) {
   |> list.map(fn(i) {
     i * filter.chunk_size + { hash_1 + i * hash_2 } % filter.chunk_size
   })
+}
+
+/// Counts the number of set bits (population count) in an integer.
+/// Used by `estimate_cardinality`.
+///
+/// * `word`: The integer (representing a word from the bit array) for which to count set bits.
+fn count_set_bits(word: Int) -> Int {
+  use acc, i <- list.fold(list.range(0, word_size - 1), 0)
+  let mask = int.bitwise_shift_left(1, i)
+  case int.bitwise_and(word, mask) == mask {
+    True -> acc + 1
+    False -> acc
+  }
 }
