@@ -68,10 +68,10 @@ pub fn it_works_test() {
   let assert Ok(filter) =
     bloom_filter.new(capacity, target_err_rate, hash_function_pair_fixture())
 
-  let assert Ok(filter) =
+  let filter =
     list.range(0, capacity - 1)
-    |> list.try_fold(filter, fn(bloom, element) {
-      bloom_filter.try_insert(bloom, [element])
+    |> list.fold(filter, fn(bloom, element) {
+      bloom_filter.insert(bloom, [element])
     })
 
   list.range(0, capacity - 1)

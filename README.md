@@ -64,12 +64,13 @@ pub fn main() {
   let assert Ok(filter) = bloom_filter.new(
     capacity: 10_000,
     target_error_rate: 0.01,
-    with_hashes: hash_fn_pair,
+    hash_fn_pair: hash_fn_pair,
   )
 
   // Insert items
-  let assert Ok(filter) = bloom_filter.try_insert(filter, "hello")
-  let assert Ok(filter) = bloom_filter.try_insert(filter, "world")
+  filter = filter
+    |> bloom_filter.insert("hello")
+    |> bloom_filter.insert("world")
 
   // Check if items might be in the set
   let in_filter = bloom_filter.might_contain(filter, "hello")  // True
@@ -82,7 +83,7 @@ pub fn main() {
   let hash_count = bloom_filter.hash_fn_count(filter)
 
   // Estimate how many unique items were inserted
-  let estimate = bloom_filter.estimate_cardinality(filter)
+  let est_cardinality = bloom_filter.estimate_cardinality(filter)
 
   // Returns an equivalent empty filter
   let empty_filter = bloom_filter.reset(filter)
@@ -101,11 +102,10 @@ gleam test  # Run the tests
 
 ## Error Handling
 
-All creation and insertion operations return a `Result`. Possible errors:
+All creation operations return a `Result`. Possible errors:
 - `EqualHashFunctions` —  Hash functions passed are equal.
 - `InvalidCapacity` —  Capacity must be positive.
 - `InvalidTargetErrorRate` —  Error rate should be in (0.0, 1.0).
-- `InsertionError` —  Should only occur if an internal array index calculation fails (unexpected; report as a bug if encountered).
 
 Check/handle errors using Gleam’s `Result` type.
 

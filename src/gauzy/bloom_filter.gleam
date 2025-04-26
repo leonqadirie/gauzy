@@ -25,8 +25,6 @@ const word_size = 52
 pub type BloomFilterError {
   /// The provided hash functions are equal, which is not allowed.
   EqualHashFunctions
-  /// An error occurred during insertion, likely an out-of-bounds index.
-  InsertionError
   /// The specified capacity is invalid (must be greater than 0).
   InvalidCapacity
   /// The specified target error rate is invalid (must be between 0.0 and 1.0 exclusively).
@@ -74,8 +72,6 @@ pub opaque type BloomFilter(item) {
     hash_function_pair: HashFunctionPair(item),
     /// The size of index ranges for Kirsch-Mitzenmacher optimization
     chunk_size: Int,
-    /// The number of word chunks in the array of size `word_size` or smaller
-    word_chunk_count: Int,
   )
 }
 
@@ -113,31 +109,24 @@ pub fn new(
     hash_fn_count:,
     hash_function_pair:,
     chunk_size:,
-    word_chunk_count:,
   ))
 }
 
-/// Tries to insert an item into the `BloomFilter`.
+/// Inserts an item into the `BloomFilter`.
 ///
 /// * `filter`: The `BloomFilter` to insert into.
 /// * `item`: The item to insert.
-pub fn try_insert(
-  in filter: BloomFilter(a),
-  insert item: a,
-) -> Result(BloomFilter(a), BloomFilterError) {
+pub fn insert(in filter: BloomFilter(a), insert item: a) -> BloomFilter(a) {
   let indices = get_bit_indices(filter, item)
 
   let array =
-    list.try_fold(indices, filter.array, fn(array, idx) {
+    list.fold(indices, filter.array, fn(array, idx) {
       let word_idx = idx / word_size
       let mask = int.bitwise_shift_left(1, { idx % word_size })
-      iv.update(array, word_idx, fn(word) { int.bitwise_or(word, mask) })
+      iv.try_update(array, word_idx, fn(word) { int.bitwise_or(word, mask) })
     })
 
-  case array {
-    Ok(array) -> Ok(BloomFilter(..filter, array:))
-    Error(_err) -> Error(InsertionError)
-  }
+  BloomFilter(..filter, array:)
 }
 
 /// Checks if the `BloomFilter` might contain the given `item`.
@@ -204,7 +193,7 @@ pub fn estimate_cardinality(in filter: BloomFilter(a)) -> Int {
 ///
 /// * `filter`: The `BloomFilter` to reset
 pub fn reset(filter filter: BloomFilter(a)) -> BloomFilter(a) {
-  BloomFilter(..filter, array: iv.repeat(0, filter.word_chunk_count))
+  BloomFilter(..filter, array: iv.repeat(0, filter.bit_size / word_size + 1))
 }
 
 /// Calculates the optimal size in bits of a Bloom filter.
