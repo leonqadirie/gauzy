@@ -33,7 +33,7 @@ pub type BloomFilterError {
 
 /// A pair of hash functions used by the Bloom filter.
 ///
-/// `item` is the type for whith the hash functions provide an `Int` digest.
+/// `item` is the type for which the hash functions provide an `Int` digest.
 pub opaque type HashFunctionPair(item) {
   HashFunctionPair(
     /// The first hash function.
