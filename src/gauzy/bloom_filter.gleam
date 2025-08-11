@@ -13,6 +13,7 @@
 //// resetting Bloom filters.
 
 import gleam/bool
+import gleam/dict
 import gleam/float
 import gleam/int
 import gleam/list
@@ -123,6 +124,42 @@ pub fn insert(in filter: BloomFilter(a), insert item: a) -> BloomFilter(a) {
     list.fold(indices, filter.array, fn(array, idx) {
       let word_idx = idx / word_size
       let mask = int.bitwise_shift_left(1, { idx % word_size })
+      iv.try_update(array, word_idx, fn(word) { int.bitwise_or(word, mask) })
+    })
+
+  BloomFilter(..filter, array:)
+}
+
+/// Bulk inserts multiple items into the `BloomFilter`.
+/// This is more efficient than inserting items one by one.
+///
+/// * `filter`: The `BloomFilter` to insert into.
+/// * `items`: The list of items to insert.
+pub fn insert_many(
+  in filter: BloomFilter(a),
+  insert items: List(a),
+) -> BloomFilter(a) {
+  let all_bit_updates =
+    list.fold(items, dict.new(), fn(acc, item) {
+      let indices = get_bit_indices(filter, item)
+      list.fold(indices, acc, fn(word_map, idx) {
+        let word_idx = idx / word_size
+        let bit_pos = idx % word_size
+        case dict.get(word_map, word_idx) {
+          Ok(mask) ->
+            dict.insert(
+              word_map,
+              word_idx,
+              int.bitwise_or(mask, int.bitwise_shift_left(1, bit_pos)),
+            )
+          Error(_) ->
+            dict.insert(word_map, word_idx, int.bitwise_shift_left(1, bit_pos))
+        }
+      })
+    })
+
+  let array =
+    dict.fold(all_bit_updates, filter.array, fn(array, word_idx, mask) {
       iv.try_update(array, word_idx, fn(word) { int.bitwise_or(word, mask) })
     })
 

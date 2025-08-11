@@ -63,7 +63,7 @@ pub fn new_bloom_filter_test() {
   let assert Error(_) = bloom_filter.new(100, 1.0, hash_function_pair_fixture())
 }
 
-pub fn it_works_test() {
+pub fn insert_works_test() {
   let capacity = 10_000
   let target_err_rate = 0.001
 
@@ -75,6 +75,36 @@ pub fn it_works_test() {
     |> list.fold(filter, fn(bloom, element) {
       bloom_filter.insert(bloom, [element])
     })
+
+  assert list.all(list.range(0, capacity - 1), fn(element) {
+    bloom_filter.might_contain(filter, [element])
+  })
+
+  // As the `HashFunctionPair` is not pairwise independent.
+  assert bloom_filter.estimate_cardinality(filter) == 256
+  assert !bloom_filter.might_contain(filter, [capacity, capacity])
+
+  let reset_filter = bloom_filter.reset(filter)
+
+  assert !list.all(list.range(0, capacity - 1), fn(element) {
+    bloom_filter.might_contain(reset_filter, [element])
+  })
+
+  assert bloom_filter.estimate_cardinality(reset_filter) == 0
+}
+
+pub fn insert_many_works_test() {
+  let capacity = 10_000
+  let target_err_rate = 0.001
+
+  let assert Ok(filter) =
+    bloom_filter.new(capacity, target_err_rate, hash_function_pair_fixture())
+
+  let items =
+    list.range(0, capacity - 1)
+    |> list.map(fn(element) { [element] })
+
+  let filter = bloom_filter.insert_many(filter, items)
 
   assert list.all(list.range(0, capacity - 1), fn(element) {
     bloom_filter.might_contain(filter, [element])
