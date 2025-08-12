@@ -131,7 +131,7 @@ pub fn insert(in filter: BloomFilter(a), insert item: a) -> BloomFilter(a) {
 }
 
 /// Bulk inserts multiple items into the `BloomFilter`.
-/// This is more efficient than inserting items one by one.
+/// This can be more efficient than inserting items one by one.
 ///
 /// * `filter`: The `BloomFilter` to insert into.
 /// * `items`: The list of items to insert.
