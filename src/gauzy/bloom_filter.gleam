@@ -13,7 +13,7 @@
 //// resetting Bloom filters.
 
 import gleam/bool
-import gleam/dict
+import gleam/dict.{type Dict}
 import gleam/float
 import gleam/int
 import gleam/list
@@ -139,29 +139,8 @@ pub fn insert_many(
   in filter: BloomFilter(a),
   insert items: List(a),
 ) -> BloomFilter(a) {
-  let all_bit_updates =
-    list.fold(items, dict.new(), fn(acc, item) {
-      let indices = get_bit_indices(filter, item)
-      list.fold(indices, acc, fn(word_map, idx) {
-        let word_idx = idx / word_size
-        let bit_pos = idx % word_size
-        case dict.get(word_map, word_idx) {
-          Ok(mask) ->
-            dict.insert(
-              word_map,
-              word_idx,
-              int.bitwise_or(mask, int.bitwise_shift_left(1, bit_pos)),
-            )
-          Error(_) ->
-            dict.insert(word_map, word_idx, int.bitwise_shift_left(1, bit_pos))
-        }
-      })
-    })
-
-  let array =
-    dict.fold(all_bit_updates, filter.array, fn(array, word_idx, mask) {
-      iv.try_update(array, word_idx, fn(word) { int.bitwise_or(word, mask) })
-    })
+  let word_masks = calculate_insertion_masks(filter, items)
+  let array = set_bits_in_array(filter.array, word_masks)
 
   BloomFilter(..filter, array:)
 }
@@ -329,4 +308,51 @@ fn count_set_bits(word: Int) -> Int {
     True -> acc + 1
     False -> acc
   }
+}
+
+/// Calculates the bit masks needed to insert a list of items into the filter.
+/// Returns a `Dict` mapping word indices to combined bit masks.
+/// 
+/// * `filter`: The Bloom filter containing hash functions and configuration
+/// * `items`: List of items to insert
+fn calculate_insertion_masks(
+  filter: BloomFilter(a),
+  items: List(a),
+) -> Dict(Int, Int) {
+  use acc, item <- list.fold(items, dict.new())
+  let indices = get_bit_indices(filter, item)
+  group_bits_by_word(acc, indices)
+}
+
+/// Groups bit indices by their word position and combines them into masks.
+/// Returns a `Dict` with bits grouped by word index.
+/// 
+/// * `word_masks`: Existing word masks to merge with
+/// * `indices`: List of bit indices to group
+fn group_bits_by_word(
+  word_masks: Dict(Int, Int),
+  indices: List(Int),
+) -> Dict(Int, Int) {
+  use acc, idx <- list.fold(indices, word_masks)
+  let word_idx = idx / word_size
+  let bit_mask = int.bitwise_shift_left(1, { idx % word_size })
+
+  case dict.get(acc, word_idx) {
+    Ok(existing_mask) ->
+      dict.insert(acc, word_idx, int.bitwise_or(existing_mask, bit_mask))
+    Error(_) -> dict.insert(acc, word_idx, bit_mask)
+  }
+}
+
+/// Sets bits in the array according to the provided word masks.
+/// Returns an `Array` with the specified bits applied using bitwise OR.
+/// 
+/// * `array`: The bit array to update
+/// * `word_masks`: Dict mapping word indices to their bit masks
+fn set_bits_in_array(
+  array: Array(Int),
+  word_masks: Dict(Int, Int),
+) -> Array(Int) {
+  use array, word_idx, mask <- dict.fold(word_masks, array)
+  iv.try_update(array, word_idx, fn(word) { int.bitwise_or(word, mask) })
 }
