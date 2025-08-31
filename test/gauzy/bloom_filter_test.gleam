@@ -7,6 +7,8 @@ pub fn main() {
   gleeunit.main()
 }
 
+/// Creates a hash function using murmur3a with the given seed.
+/// Returns a function that takes a list of integers and produces a hash value.
 fn create_hash_function(seed: Int) {
   fn(ints) {
     ints
@@ -15,6 +17,8 @@ fn create_hash_function(seed: Int) {
   }
 }
 
+/// Creates a test fixture for a hash function pair.
+/// Uses two hash functions with different seeds (0 and 1) for testing purposes.
 fn hash_function_pair_fixture() {
   let assert Ok(hash_fn_pair) =
     bloom_filter.new_hash_fn_pair(
@@ -24,18 +28,24 @@ fn hash_function_pair_fixture() {
   hash_fn_pair
 }
 
+/// Creates a test bloom filter with specified capacity and target error rate.
+/// Uses the hash function pair fixture for consistent testing.
 fn create_test_filter(capacity: Int, target_err_rate: Float) {
   let assert Ok(filter) =
     bloom_filter.new(capacity, target_err_rate, hash_function_pair_fixture())
   filter
 }
 
+/// Verifies that all items from `0` to `capacity-1` are present in the filter.
+/// Asserts that might_contain returns true for all expected elements.
 fn verify_all_items_present(filter, capacity: Int) {
   assert list.all(list.range(0, capacity - 1), fn(element) {
     bloom_filter.might_contain(filter, [element])
   })
 }
 
+/// Verifies that resetting a filter clears all elements.
+/// Checks that the reset filter doesn't contain previous elements and has cardinality `0`.
 fn verify_reset_filter(filter, capacity: Int) {
   let reset_filter = bloom_filter.reset(filter)
 
