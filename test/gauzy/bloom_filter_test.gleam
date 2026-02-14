@@ -1,4 +1,4 @@
-import gauzy/bloom_filter
+import gauzy/bloom_filter.{type BloomFilter}
 import gleam/int
 import gleeunit
 import murmur3a
@@ -36,29 +36,39 @@ fn create_test_filter(capacity: Int, target_err_rate: Float) {
   filter
 }
 
-/// Verifies that all items from `0` to `capacity-1` are present in the filter.
-/// Asserts that might_contain returns true for all expected elements.
-fn verify_all_items_present(filter, capacity: Int) {
-  let all_present = {
-    int.range(from: 0, to: capacity, with: True, run: fn(acc, element) {
-      acc && bloom_filter.might_contain(filter, [element])
-    })
-  }
-  assert all_present
+/// Returns whether all items from `0` (inclusive) to `capacity` (exclusive)
+/// are present in the filter.
+fn all_items_present(
+  in filter: BloomFilter(List(Int)),
+  with capacity: Int,
+) -> Bool {
+  int.range(from: 0, to: capacity, with: True, run: fn(acc, element) {
+    acc && bloom_filter.might_contain(filter, [element])
+  })
 }
 
-/// Verifies that resetting a filter clears all elements.
-/// Checks that the reset filter doesn't contain previous elements and has cardinality `0`.
-fn verify_reset_filter(filter, capacity: Int) {
+/// Returns whether no items from `0` (inclusive) to `capacity` (exclusive)
+/// are present in the filter.
+fn no_items_present(
+  in filter: BloomFilter(List(Int)),
+  with capacity: Int,
+) -> Bool {
+  int.range(from: 0, to: capacity, with: True, run: fn(acc, element) {
+    acc && !bloom_filter.might_contain(filter, [element])
+  })
+}
+
+/// Verifies that a populated filter contains all expected items, has the expected
+/// cardinality, rejects unknown items, and clears correctly on reset.
+fn verify_filter(filter, capacity: Int) {
+  assert all_items_present(in: filter, with: capacity)
+
+  // As the `HashFunctionPair` is not pairwise independent.
+  assert bloom_filter.estimate_cardinality(filter) == 256
+  assert !bloom_filter.might_contain(filter, [capacity, capacity])
+
   let reset_filter = bloom_filter.reset(filter)
-
-  let all_present = {
-    int.range(from: 0, to: capacity, with: True, run: fn(acc, element) {
-      acc && bloom_filter.might_contain(reset_filter, [element])
-    })
-  }
-  assert !all_present
-
+  assert no_items_present(in: reset_filter, with: capacity)
   assert bloom_filter.estimate_cardinality(reset_filter) == 0
 }
 
@@ -97,13 +107,7 @@ pub fn insert_works_test() {
     })
   }
 
-  verify_all_items_present(filter, capacity)
-
-  // As the `HashFunctionPair` is not pairwise independent.
-  assert bloom_filter.estimate_cardinality(filter) == 256
-  assert !bloom_filter.might_contain(filter, [capacity, capacity])
-
-  verify_reset_filter(filter, capacity)
+  verify_filter(filter, capacity)
 }
 
 pub fn insert_many_works_test() {
@@ -118,11 +122,5 @@ pub fn insert_many_works_test() {
 
   let filter = bloom_filter.insert_many(filter, items)
 
-  verify_all_items_present(filter, capacity)
-
-  // As the `HashFunctionPair` is not pairwise independent.
-  assert bloom_filter.estimate_cardinality(filter) == 256
-  assert !bloom_filter.might_contain(filter, [capacity, capacity])
-
-  verify_reset_filter(filter, capacity)
+  verify_filter(filter, capacity)
 }
