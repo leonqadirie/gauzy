@@ -1,5 +1,5 @@
 import gauzy/bloom_filter
-import gleam/list
+import gleam/int
 import gleeunit
 import murmur3a
 
@@ -39,9 +39,12 @@ fn create_test_filter(capacity: Int, target_err_rate: Float) {
 /// Verifies that all items from `0` to `capacity-1` are present in the filter.
 /// Asserts that might_contain returns true for all expected elements.
 fn verify_all_items_present(filter, capacity: Int) {
-  assert list.all(list.range(0, capacity - 1), fn(element) {
-    bloom_filter.might_contain(filter, [element])
-  })
+  let all_present = {
+    int.range(from: 0, to: capacity, with: True, run: fn(acc, element) {
+      acc && bloom_filter.might_contain(filter, [element])
+    })
+  }
+  assert all_present
 }
 
 /// Verifies that resetting a filter clears all elements.
@@ -49,9 +52,12 @@ fn verify_all_items_present(filter, capacity: Int) {
 fn verify_reset_filter(filter, capacity: Int) {
   let reset_filter = bloom_filter.reset(filter)
 
-  assert !list.all(list.range(0, capacity - 1), fn(element) {
-    bloom_filter.might_contain(reset_filter, [element])
-  })
+  let all_present = {
+    int.range(from: 0, to: capacity, with: True, run: fn(acc, element) {
+      acc && bloom_filter.might_contain(reset_filter, [element])
+    })
+  }
+  assert !all_present
 
   assert bloom_filter.estimate_cardinality(reset_filter) == 0
 }
@@ -85,11 +91,11 @@ pub fn insert_works_test() {
   let capacity = 10_000
   let filter = create_test_filter(capacity, 0.001)
 
-  let filter =
-    list.range(0, capacity - 1)
-    |> list.fold(filter, fn(bloom, element) {
+  let filter = {
+    int.range(from: 0, to: capacity, with: filter, run: fn(bloom, element) {
       bloom_filter.insert(bloom, [element])
     })
+  }
 
   verify_all_items_present(filter, capacity)
 
@@ -104,9 +110,11 @@ pub fn insert_many_works_test() {
   let capacity = 10_000
   let filter = create_test_filter(capacity, 0.001)
 
-  let items =
-    list.range(0, capacity - 1)
-    |> list.map(fn(element) { [element] })
+  let items = {
+    int.range(from: 0, to: capacity, with: [], run: fn(acc, element) {
+      [[element], ..acc]
+    })
+  }
 
   let filter = bloom_filter.insert_many(filter, items)
 

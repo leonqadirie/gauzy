@@ -291,9 +291,8 @@ fn get_bit_indices(filter: BloomFilter(a), item: a) -> List(Int) {
     hash_2 -> hash_2
   }
 
-  list.range(0, filter.hash_fn_count - 1)
-  |> list.map(fn(i) {
-    i * filter.chunk_size + { hash_1 + i * hash_2 } % filter.chunk_size
+  int.range(from: 0, to: filter.hash_fn_count, with: [], run: fn(acc, i) {
+    [i * filter.chunk_size + { hash_1 + i * hash_2 } % filter.chunk_size, ..acc]
   })
 }
 
@@ -302,7 +301,7 @@ fn get_bit_indices(filter: BloomFilter(a), item: a) -> List(Int) {
 ///
 /// * `word`: The integer (representing a word from the bit array) for which to count set bits.
 fn count_set_bits(word: Int) -> Int {
-  use acc, i <- list.fold(list.range(0, word_size - 1), 0)
+  use acc, i <- int.range(from: 0, to: word_size, with: 0)
   let mask = int.bitwise_shift_left(1, i)
   case int.bitwise_and(word, mask) == mask {
     True -> acc + 1
