@@ -1,15 +1,17 @@
-import gauzy/bloom_filter.{type BloomFilter}
+import gauzy/bloom_filter.{
+  type BloomFilter, type BloomFilterError, type HashFunctionPair,
+}
 import gleam/int
 import gleeunit
 import murmur3a
 
-pub fn main() {
+pub fn main() -> Nil {
   gleeunit.main()
 }
 
 /// Creates a hash function using murmur3a with the given seed.
 /// Returns a function that takes a list of integers and produces a hash value.
-fn create_hash_function(seed: Int) {
+fn create_hash_function(seed: Int) -> fn(List(Int)) -> Int {
   fn(ints) {
     ints
     |> murmur3a.hash_ints(seed)
@@ -19,7 +21,7 @@ fn create_hash_function(seed: Int) {
 
 /// Creates a test fixture for a hash function pair.
 /// Uses two hash functions with different seeds (0 and 1) for testing purposes.
-fn hash_function_pair_fixture() {
+fn hash_function_pair_fixture() -> HashFunctionPair(List(Int)) {
   let assert Ok(hash_fn_pair) =
     bloom_filter.new_hash_fn_pair(
       create_hash_function(0),
@@ -30,7 +32,10 @@ fn hash_function_pair_fixture() {
 
 /// Creates a test bloom filter with specified capacity and target error rate.
 /// Uses the hash function pair fixture for consistent testing.
-fn create_test_filter(capacity: Int, target_err_rate: Float) {
+fn create_test_filter(
+  capacity: Int,
+  target_err_rate: Float,
+) -> BloomFilter(List(Int)) {
   let assert Ok(filter) =
     bloom_filter.new(capacity, target_err_rate, hash_function_pair_fixture())
   filter
@@ -60,7 +65,7 @@ fn no_items_present(
 
 /// Verifies that a populated filter contains all expected items, has the expected
 /// cardinality, rejects unknown items, and clears correctly on reset.
-fn verify_filter(filter, capacity: Int) {
+fn verify_filter(filter: BloomFilter(List(Int)), capacity: Int) -> Nil {
   assert all_items_present(in: filter, with: capacity)
 
   // As the `HashFunctionPair` is not pairwise independent.
@@ -72,7 +77,10 @@ fn verify_filter(filter, capacity: Int) {
   assert bloom_filter.estimate_cardinality(reset_filter) == 0
 }
 
-pub fn new_hash_function_pair_test() {
+pub fn new_hash_function_pair_test() -> Result(
+  HashFunctionPair(List(Int)),
+  BloomFilterError,
+) {
   let hash_fn_1 = create_hash_function(0)
   let hash_fn_2 = create_hash_function(1)
 
@@ -80,7 +88,10 @@ pub fn new_hash_function_pair_test() {
   let assert Error(_) = bloom_filter.new_hash_fn_pair(hash_fn_1, hash_fn_1)
 }
 
-pub fn new_bloom_filter_test() {
+pub fn new_bloom_filter_test() -> Result(
+  BloomFilter(List(Int)),
+  BloomFilterError,
+) {
   let filter = create_test_filter(100, 0.001)
   assert bloom_filter.bit_size(filter) == 1440
   assert bloom_filter.hash_fn_count(filter) == 10
@@ -97,7 +108,7 @@ pub fn new_bloom_filter_test() {
   let assert Error(_) = bloom_filter.new(100, 1.0, hash_fn_pair)
 }
 
-pub fn insert_works_test() {
+pub fn insert_works_test() -> Nil {
   let capacity = 10_000
   let filter = create_test_filter(capacity, 0.001)
 
@@ -110,7 +121,7 @@ pub fn insert_works_test() {
   verify_filter(filter, capacity)
 }
 
-pub fn insert_many_works_test() {
+pub fn insert_many_works_test() -> Nil {
   let capacity = 10_000
   let filter = create_test_filter(capacity, 0.001)
 
