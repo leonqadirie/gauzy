@@ -12,3 +12,4 @@ iv = ">= 1.2.0 and < 2.0.0"
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
 murmur3a = ">= 1.0.0 and < 2.0.0"
+glinter = ">= 2.19.0 and < 3.0.0"
