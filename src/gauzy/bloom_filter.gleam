@@ -51,11 +51,12 @@ pub opaque type HashFunctionPair(item) {
 ///
 /// * `first_hash_function`: The first hash function.
 /// * `second_hash_function`: The second hash function.
-pub fn new_hash_fn_pair(hash_fn_1: fn(a) -> Int, hash_fn_2: fn(a) -> Int) {
-  case hash_fn_1 == hash_fn_2 {
-    False -> Ok(HashFunctionPair(hash_fn_1:, hash_fn_2:))
-    True -> Error(EqualHashFunctions)
-  }
+pub fn new_hash_fn_pair(
+  hash_fn_1: fn(a) -> Int,
+  hash_fn_2: fn(a) -> Int,
+) -> Result(HashFunctionPair(a), BloomFilterError) {
+  use <- bool.guard(hash_fn_1 == hash_fn_2, Error(EqualHashFunctions))
+  Ok(HashFunctionPair(hash_fn_1:, hash_fn_2:))
 }
 
 /// A space-efficient data structure to probabilistically check set membership.
@@ -99,7 +100,7 @@ pub fn new(
     _ -> optimal_bit_size + { hash_fn_count - optimal_bit_size % hash_fn_count }
   }
   let false_positive_rate =
-    actual_false_positive_rate(bit_size, capacity, hash_fn_count)
+    actual_false_positive_rate(bit_size:, capacity:, hash_fn_count:)
   let chunk_size = bit_size / hash_fn_count
   let word_chunk_count = bit_size / word_size + 1
 
@@ -192,7 +193,7 @@ pub fn estimate_cardinality(in filter: BloomFilter(a)) -> Int {
       total_set_bits + count_set_bits(word)
     })
 
-  // Can't panic as m > 0, therefore term > 0
+  // nolint: assert_ok_pattern -- log argument 1.0 -. set_bits/bit_size > 0.0
   let assert Ok(partial_calc) =
     float.logarithm(
       1.0 -. int.to_float(set_bits) /. int.to_float(filter.bit_size),
@@ -217,12 +218,12 @@ pub fn reset(filter filter: BloomFilter(a)) -> BloomFilter(a) {
 ///
 /// * `capacity`: The number of bits that constitute the filter
 /// * `target_err_rate`: The Bloom filter's acceptable false positive rate
-fn optimal_bit_size(capacity: Int, target_err_rate: Float) {
-  // No panic possible as `2.0` is positive
+fn optimal_bit_size(capacity: Int, target_err_rate: Float) -> Int {
+  // nolint: assert_ok_pattern -- log of 2.0 is defined (2.0 > 0.0)
   let assert Ok(ln_2) = float.logarithm(2.0)
-  // No panic possible as `ln_2` is positive
+  // nolint: assert_ok_pattern -- base ln_2 > 0.0, so float.power is defined
   let assert Ok(ln_2_squared) = float.power(ln_2, 2.0)
-  // No panic possible as `target_err_rate` is clearly defined
+  // nolint: assert_ok_pattern -- target_err_rate is validated to (0.0, 1.0)
   let assert Ok(ln_target_err_rate) = float.logarithm(target_err_rate)
 
   -1.0 *. { int.to_float(capacity) *. ln_target_err_rate } /. ln_2_squared
@@ -236,8 +237,8 @@ fn optimal_bit_size(capacity: Int, target_err_rate: Float) {
 ///
 /// * `bit_size`: The number of bits that constitute the filter
 /// * `capacity`: The number of elements that the filter shall be able to hold
-fn optimal_hash_fn_count(bit_size: Int, capacity: Int) {
-  // No panic possible as `float.logarithm(2.0)` is clearly defined
+fn optimal_hash_fn_count(bit_size: Int, capacity: Int) -> Int {
+  // nolint: assert_ok_pattern -- log of 2.0 is defined (2.0 > 0.0)
   let assert Ok(ln_2) = float.logarithm(2.0)
   int.to_float(bit_size) /. int.to_float(capacity) *. ln_2
   |> float.round
@@ -253,13 +254,13 @@ fn optimal_hash_fn_count(bit_size: Int, capacity: Int) {
 ///
 /// Returns an `f64` as the expected false positive rate.
 fn actual_false_positive_rate(
-  bit_size: Int,
-  capacity: Int,
-  hash_fn_count: Int,
+  bit_size bit_size: Int,
+  capacity capacity: Int,
+  hash_fn_count hash_fn_count: Int,
 ) -> Float {
-  // Can't panic in `float.power` as:
-  // - the result of `float.exponential` is always positive
-  // - `hash_fn_count` is always positive
+  // `float.power` only errors on a negative or zero base. The base here is
+  // `1.0 -. e^(negative)`, which is always in (0.0, 1.0), so it never errors.
+  // nolint: assert_ok_pattern
   let assert Ok(false_positive_rate) =
     float.power(
       1.0
@@ -339,7 +340,7 @@ fn group_bits_by_word(
   case dict.get(acc, word_idx) {
     Ok(existing_mask) ->
       dict.insert(acc, word_idx, int.bitwise_or(existing_mask, bit_mask))
-    Error(_) -> dict.insert(acc, word_idx, bit_mask)
+    Error(Nil) -> dict.insert(acc, word_idx, bit_mask)
   }
 }
 

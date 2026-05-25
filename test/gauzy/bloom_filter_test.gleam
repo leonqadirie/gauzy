@@ -2,12 +2,7 @@ import gauzy/bloom_filter.{
   type BloomFilter, type BloomFilterError, type HashFunctionPair,
 }
 import gleam/int
-import gleeunit
 import murmur3a
-
-pub fn main() -> Nil {
-  gleeunit.main()
-}
 
 /// Creates a hash function using murmur3a with the given seed.
 /// Returns a function that takes a list of integers and produces a hash value.

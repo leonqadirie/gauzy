@@ -13,3 +13,12 @@ iv = ">= 1.2.0 and < 2.0.0"
 gleeunit = ">= 1.0.0 and < 2.0.0"
 murmur3a = ">= 1.0.0 and < 2.0.0"
 glinter = ">= 2.19.0 and < 3.0.0"
+
+[tools.glinter]
+include = ["src/", "test/"]
+
+# In tests these rules are false positives: gleeunit discovers `*_test`
+# functions by reflection (so they look unused), and `let assert` is the
+# idiomatic way to assert (a failed assert should fail the test).
+[tools.glinter.ignore]
+"test/**/*.gleam" = ["unused_exports", "assert_ok_pattern"]
