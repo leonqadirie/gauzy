@@ -233,7 +233,6 @@ fn optimal_bit_size(capacity: Int, target_err_rate: Float) -> Int {
   |> float.round
 }
 
-/// * `capacity`: The number of elements that the filter shall be able to hold
 /// Calculates the optimal number of hash functions for a Bloom filter.
 /// Used in filter construction.
 ///
