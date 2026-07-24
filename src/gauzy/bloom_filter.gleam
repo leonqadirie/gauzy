@@ -153,7 +153,6 @@ pub fn insert_many(
 /// * `filter`: The `BloomFilter` to check
 /// * `item`: The item to check for
 pub fn might_contain(in filter: BloomFilter(a), search item: a) -> Bool {
-  // let indices =
   get_bit_indices(filter, item)
   |> list.all(fn(idx) {
     let word_idx = idx / word_size
