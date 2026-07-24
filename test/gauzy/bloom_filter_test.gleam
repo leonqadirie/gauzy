@@ -3,6 +3,7 @@ import gauzy/bloom_filter.{
 }
 import gleam/float
 import gleam/int
+import gleam/list
 import murmur3a
 
 /// Creates a hash function using murmur3a with the given seed.
@@ -10,9 +11,24 @@ import murmur3a
 fn create_hash_function(seed: Int) -> fn(List(Int)) -> Int {
   fn(ints) {
     ints
+    |> list.flat_map(to_bytes)
     |> murmur3a.hash_ints(seed)
     |> murmur3a.int_digest
   }
+}
+
+/// Spreads an integer over the four bytes `murmur3a.hash_ints` consumes.
+///
+/// It masks every element of its list down to `0xff`, so handing it integers
+/// whole would collapse `[0]` through `[9999]` onto a mere 256 distinct
+/// digests, and the tests below would only ever exercise 256 keys.
+fn to_bytes(int: Int) -> List(Int) {
+  [
+    int,
+    int.bitwise_shift_right(int, 8),
+    int.bitwise_shift_right(int, 16),
+    int.bitwise_shift_right(int, 24),
+  ]
 }
 
 /// Creates a test fixture for a hash function pair.
@@ -64,8 +80,10 @@ fn no_items_present(
 fn verify_filter(filter: BloomFilter(List(Int)), capacity: Int) -> Nil {
   assert all_items_present(in: filter, with: capacity)
 
-  // As the `HashFunctionPair` is not pairwise independent.
-  assert bloom_filter.estimate_cardinality(filter) == 256
+  // Estimating is approximate by nature, so allow the count a 1% margin.
+  let estimate = bloom_filter.estimate_cardinality(filter)
+  assert int.absolute_value(estimate - capacity) <= capacity / 100
+
   assert !bloom_filter.might_contain(filter, [capacity, capacity])
 
   let reset_filter = bloom_filter.reset(filter)
