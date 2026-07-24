@@ -109,10 +109,9 @@ pub fn new(
   let false_positive_rate =
     actual_false_positive_rate(bit_size:, capacity:, hash_fn_count:)
   let chunk_size = bit_size / hash_fn_count
-  let word_chunk_count = bit_size / word_size + 1
 
   Ok(BloomFilter(
-    array: iv.repeat(0, word_chunk_count),
+    array: iv.repeat(0, word_count(bit_size)),
     bit_size:,
     false_positive_rate:,
     hash_fn_count:,
@@ -218,7 +217,16 @@ pub fn estimate_cardinality(in filter: BloomFilter(a)) -> Int {
 ///
 /// * `filter`: The `BloomFilter` to reset
 pub fn reset(filter filter: BloomFilter(a)) -> BloomFilter(a) {
-  BloomFilter(..filter, array: iv.repeat(0, filter.bit_size / word_size + 1))
+  BloomFilter(..filter, array: iv.repeat(0, word_count(filter.bit_size)))
+}
+
+/// The number of `word_size`-bit words needed to hold `bit_size` bits.
+///
+/// Ceiling division, so it covers bit indices `0..bit_size - 1` with no wasted
+/// trailing word when `bit_size` divides evenly. Assumes `bit_size >= 1`, which
+/// `new` guarantees.
+fn word_count(bit_size: Int) -> Int {
+  { bit_size - 1 } / word_size + 1
 }
 
 /// Calculates the optimal size in bits of a Bloom filter.
