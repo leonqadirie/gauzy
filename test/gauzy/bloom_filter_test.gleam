@@ -145,6 +145,38 @@ pub fn insert_works_test() -> Nil {
   verify_filter(filter, capacity)
 }
 
+pub fn false_positive_rate_holds_up_test() -> Nil {
+  let capacity = 10_000
+  let probes = 50_000
+  let filter = create_test_filter(capacity, 0.001)
+
+  let filter =
+    int.range(from: 0, to: capacity, with: filter, run: fn(bloom, element) {
+      bloom_filter.insert(bloom, [element])
+    })
+
+  // Probing keys that were never inserted, the filter should claim only about
+  // as many of them as the rate it predicts for itself.
+  let false_positives =
+    int.range(
+      from: capacity,
+      to: capacity + probes,
+      with: 0,
+      run: fn(acc, element) {
+        case bloom_filter.might_contain(filter, [element]) {
+          True -> acc + 1
+          False -> acc
+        }
+      },
+    )
+
+  assert float.loosely_equals(
+    int.to_float(false_positives) /. int.to_float(probes),
+    bloom_filter.false_positive_rate(filter),
+    tolerating: 0.0005,
+  )
+}
+
 pub fn insert_many_works_test() -> Nil {
   let capacity = 10_000
   let filter = create_test_filter(capacity, 0.001)
