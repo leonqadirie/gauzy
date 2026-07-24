@@ -283,14 +283,10 @@ fn actual_false_positive_rate(
 fn get_bit_indices(filter: BloomFilter(a), item: a) -> List(Int) {
   let HashFunctionPair(hash_fn_1:, hash_fn_2:) = filter.hash_function_pair
 
-  let hash_1 = case hash_fn_1(item) {
-    hash_1 if hash_1 < 0 -> { 2 * hash_1 } |> int.absolute_value
-    hash_1 -> hash_1
-  }
-  let hash_2 = case hash_fn_2(item) {
-    hash_2 if hash_2 < 0 -> { 2 * hash_2 } |> int.absolute_value
-    hash_2 -> hash_2
-  }
+  // Hash functions may return negative ints; fold to a non-negative value.
+  // `absolute_value` is parity-transparent, so it doesn't skew `hash % chunk_size`.
+  let hash_1 = int.absolute_value(hash_fn_1(item))
+  let hash_2 = int.absolute_value(hash_fn_2(item))
 
   int.range(from: 0, to: filter.hash_fn_count, with: [], run: fn(acc, i) {
     [i * filter.chunk_size + { hash_1 + i * hash_2 } % filter.chunk_size, ..acc]
