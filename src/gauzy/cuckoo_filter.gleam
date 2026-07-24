@@ -69,6 +69,13 @@ pub type CuckooFilterError {
   InvalidTargetErrorRate
   /// The filter could not house the item after `max_kicks` relocations.
   FilterFull
+  /// A `delete` found no slot holding the item's fingerprint in either
+  /// candidate bucket, so the filter does not contain it.
+  ///
+  /// Because membership is matched by fingerprint, this is the *only* thing
+  /// `delete` can detect: a *missing* fingerprint is certain, but a *matching*
+  /// one is not proof you deleted your own item — see `delete`.
+  ItemNotPresent
 }
 
 /// A pair of hash functions used by the Cuckoo filter.
@@ -235,8 +242,10 @@ pub fn might_contain(in filter: CuckooFilter(a), search item: a) -> Bool {
   find_item_slot(filter, item) |> result.is_ok
 }
 
-/// Removes one previously inserted copy of `item` from the `CuckooFilter`.
-/// Removing an item the filter does not hold leaves it unchanged.
+/// Removes one previously inserted copy of `item` from the `CuckooFilter`,
+/// returning the updated filter. Fails with `ItemNotPresent` when `item`'s
+/// fingerprint is absent from both its candidate buckets, i.e. the filter does
+/// not hold it.
 ///
 /// Only ever delete items you have actually inserted! A filter reports
 /// membership by fingerprint, so deleting a never-inserted item that happens to
@@ -244,17 +253,29 @@ pub fn might_contain(in filter: CuckooFilter(a), search item: a) -> Bool {
 /// reported as missing – the false negatives a Cuckoo filter otherwise rules
 /// out.
 ///
+/// `Ok` therefore means "a matching fingerprint was cleared", not "you deleted
+/// your own item": the false-positive case above still returns `Ok` while
+/// corrupting the filter, because it is indistinguishable from a real hit. The
+/// `ItemNotPresent` error only catches deletes of an item whose fingerprint is
+/// wholly absent – a double delete or a wrong key. It is a misuse check, not a
+/// guarantee.
+///
 /// * `filter`: The `CuckooFilter` to remove from
 /// * `item`: The item to remove
-pub fn delete(from filter: CuckooFilter(a), delete item: a) -> CuckooFilter(a) {
+pub fn delete(
+  from filter: CuckooFilter(a),
+  delete item: a,
+) -> Result(CuckooFilter(a), CuckooFilterError) {
   case find_item_slot(filter, item) {
     Ok(slot) ->
-      CuckooFilter(
-        ..filter,
-        array: write_slot(in: filter, at: slot, fingerprint: empty_slot),
-        item_count: filter.item_count - 1,
+      Ok(
+        CuckooFilter(
+          ..filter,
+          array: write_slot(in: filter, at: slot, fingerprint: empty_slot),
+          item_count: filter.item_count - 1,
+        ),
       )
-    Error(Nil) -> filter
+    Error(Nil) -> Error(ItemNotPresent)
   }
 }
 
