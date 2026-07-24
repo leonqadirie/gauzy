@@ -10,7 +10,7 @@ Ever need to quickly check if you've seen an item before, without storing *every
 - "Is this item *definitely* not in the set?".
 They're great for large datasets where perfect accuracy isn't strictly needed, but speed and low memory usage are important.
 
-**Currently includes:** Bloom filters (more filter types planned!)
+**Currently includes:** Bloom filters and Cuckoo filters (more filter types planned!)
 
 ---
 
@@ -28,6 +28,13 @@ Probabilistic data structures are specialized data structures that use randomiza
 - Approximate answers are acceptable
 
 ## Available Data Structures
+
+| | Bloom filter | Cuckoo filter |
+| --- | --- | --- |
+| False negatives | Never | Never, if you only delete what you inserted |
+| Deletion | Not supported | Supported |
+| Insertion | Always succeeds | Can fail once nearly full |
+| Item count | Estimated | Exact |
 
 ### Bloom Filter
 
@@ -91,6 +98,69 @@ pub fn main() {
 }
 ```
 
+### Cuckoo Filter
+
+A Cuckoo filter answers the same question as a Bloom filter, but stores a short *fingerprint* of each item in one of two candidate buckets instead of setting bits. That buys you deletion and an exact item count.
+
+Key properties:
+- Zero false negatives — provided you only delete items you actually inserted
+- Configurable false positive rate (might say "in set" when it's not)
+- Supports deletion, unlike a Bloom filter
+- Knows exactly how many items it holds, no estimation needed
+- Insertion can fail once the filter is nearly full
+
+```gleam
+import gauzy/cuckoo_filter
+import murmur3a
+import mumu
+
+pub fn main() {
+  // Same requirements as for the Bloom filter's hash functions.
+  let hash_fn_1 = fn(string_item) {
+    murmur3a.hash_string(string_item, 0)
+    |> murmur3a.int_digest
+  }
+  let hash_fn_2 = fn(string_item) {
+    mumu.hash(string_item)
+  }
+
+  let assert Ok(hash_fn_pair) =
+    cuckoo_filter.new_hash_fn_pair(hash_fn_1, hash_fn_2)
+
+  // Expect to store ~10,000 items, allow 1% error rate
+  let assert Ok(filter) = cuckoo_filter.new(
+    capacity: 10_000,
+    target_error_rate: 0.01,
+    hash_function_pair: hash_fn_pair,
+  )
+
+  // Inserting can run out of room, so it returns a Result. When it does fail
+  // the filter you passed in is untouched, and still knows everything it held.
+  let assert Ok(filter) = cuckoo_filter.insert(filter, "hello")
+  let assert Ok(filter) = cuckoo_filter.insert(filter, "world")
+
+  // Check if items might be in the set
+  let in_filter = cuckoo_filter.might_contain(filter, "hello")  // True
+  let not_in_filter = cuckoo_filter.might_contain(filter, "goodbye")  // False
+
+  // Remove one previously inserted copy of an item
+  let filter = cuckoo_filter.delete(filter, "hello")
+  let gone = cuckoo_filter.might_contain(filter, "hello")  // False
+
+  // Get filter properties
+  let stored = cuckoo_filter.item_count(filter)  // 1, and it's exact
+  let room_for = cuckoo_filter.capacity(filter)
+  let size = cuckoo_filter.bit_size(filter)
+  let error_rate = cuckoo_filter.false_positive_rate(filter)
+  let fingerprint_size = cuckoo_filter.fingerprint_bits(filter)
+
+  // Returns an equivalent empty filter
+  let empty_filter = cuckoo_filter.reset(filter)
+}
+```
+
+> **Only delete items you have actually inserted.** A Cuckoo filter matches on fingerprints, so deleting an item that was never inserted but happens to be a false positive drops *another* item's fingerprint — and that item then reads as missing, which is the one thing these filters otherwise rule out.
+
 Further documentation can be found at <https://hexdocs.pm/gauzy>.
 
 ## Development
@@ -103,10 +173,13 @@ gleam test  # Run the tests
 
 ## Error Handling
 
-All creation operations return a `Result`. Possible errors:
+All creation operations return a `Result`. Each filter has its own error type — `BloomFilterError` and `CuckooFilterError` — sharing these variants:
 - `EqualHashFunctions` —  Hash functions passed are equal.
 - `InvalidCapacity` —  Capacity must be positive.
 - `InvalidTargetErrorRate` —  Error rate should be in (0.0, 1.0).
+
+`cuckoo_filter.insert` and `cuckoo_filter.insert_many` also return a `Result`:
+- `FilterFull` —  No room could be made for the item. The filter is returned to you unchanged.
 
 Check/handle errors using Gleam’s `Result` type.
 
@@ -126,5 +199,7 @@ Check/handle errors using Gleam’s `Result` type.
 
 - [Hexdocs](https://hexdocs.pm/gauzy/)
 - [Bloom filter primer (Wikipedia)](https://en.wikipedia.org/wiki/Bloom_filter)
+- [Cuckoo filter primer (Wikipedia)](https://en.wikipedia.org/wiki/Cuckoo_filter)
+- [Cuckoo Filter: Practically Better Than Bloom](https://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf) — the original paper
 
 ---
