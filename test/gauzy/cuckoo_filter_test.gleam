@@ -177,7 +177,9 @@ pub fn delete_works_test() -> Nil {
 
   let filter =
     int.range(from: 0, to: deleted, with: filter, run: fn(filter, element) {
-      cuckoo_filter.delete(filter, int.to_string(element))
+      let assert Ok(filter) =
+        cuckoo_filter.delete(filter, int.to_string(element))
+      filter
     })
 
   assert cuckoo_filter.item_count(filter) == inserted - deleted
@@ -197,12 +199,15 @@ pub fn delete_works_test() -> Nil {
   assert count_items_present(in: filter, with: deleted) <= 5
 }
 
-pub fn delete_missing_item_is_a_no_op_test() -> Nil {
+pub fn delete_missing_item_errors_test() -> Nil {
   let filter = create_test_filter(100, 0.01)
   let filter = insert_items(in: filter, with: 10)
 
-  let filter = cuckoo_filter.delete(filter, "never inserted")
+  // The item's fingerprint is absent, so the delete is rejected outright.
+  assert cuckoo_filter.delete(filter, "never inserted")
+    == Error(cuckoo_filter.ItemNotPresent)
 
+  // ...and the filter is left untouched.
   assert cuckoo_filter.item_count(filter) == 10
   assert all_items_present(in: filter, with: 10)
 }
@@ -213,11 +218,11 @@ pub fn delete_removes_one_copy_at_a_time_test() -> Nil {
   let assert Ok(filter) = cuckoo_filter.insert(filter, "twice")
   assert cuckoo_filter.item_count(filter) == 2
 
-  let filter = cuckoo_filter.delete(filter, "twice")
+  let assert Ok(filter) = cuckoo_filter.delete(filter, "twice")
   assert cuckoo_filter.item_count(filter) == 1
   assert cuckoo_filter.might_contain(filter, "twice")
 
-  let filter = cuckoo_filter.delete(filter, "twice")
+  let assert Ok(filter) = cuckoo_filter.delete(filter, "twice")
   assert cuckoo_filter.item_count(filter) == 0
   assert !cuckoo_filter.might_contain(filter, "twice")
 }

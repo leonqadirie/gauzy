@@ -143,8 +143,9 @@ pub fn main() {
   let in_filter = cuckoo_filter.might_contain(filter, "hello")  // True
   let not_in_filter = cuckoo_filter.might_contain(filter, "goodbye")  // False
 
-  // Remove one previously inserted copy of an item
-  let filter = cuckoo_filter.delete(filter, "hello")
+  // Remove one previously inserted copy of an item. Deleting an item whose
+  // fingerprint is absent fails with ItemNotPresent, so it returns a Result.
+  let assert Ok(filter) = cuckoo_filter.delete(filter, "hello")
   let gone = cuckoo_filter.might_contain(filter, "hello")  // False
 
   // Get filter properties
@@ -159,7 +160,7 @@ pub fn main() {
 }
 ```
 
-> **Only delete items you have actually inserted.** A Cuckoo filter matches on fingerprints, so deleting an item that was never inserted but happens to be a false positive drops *another* item's fingerprint — and that item then reads as missing, which is the one thing these filters otherwise rule out.
+> **Only delete items you have actually inserted.** A Cuckoo filter matches on fingerprints, so deleting an item that was never inserted but happens to be a false positive drops *another* item's fingerprint — and that item then reads as missing, which is the one thing these filters otherwise rule out. `delete` fails with `ItemNotPresent` when the fingerprint is wholly absent (a double delete or wrong key), but that check cannot catch the false-positive case: an `Ok` means a matching fingerprint was cleared, not that you deleted your own item.
 
 Further documentation can be found at <https://hexdocs.pm/gauzy>.
 
@@ -180,6 +181,9 @@ All creation operations return a `Result`. Each filter has its own error type �
 
 `cuckoo_filter.insert` and `cuckoo_filter.insert_many` also return a `Result`:
 - `FilterFull` —  No room could be made for the item. The filter is returned to you unchanged.
+
+`cuckoo_filter.delete` also returns a `Result`:
+- `ItemNotPresent` —  No slot held the item's fingerprint, so the filter does not contain it.
 
 Check/handle errors using Gleam’s `Result` type.
 

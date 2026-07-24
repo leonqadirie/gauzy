@@ -29,7 +29,8 @@ import iv.{type Array}
 /// would pack more densely on Erlang but silently lose low bits on JS.
 const word_size = 52
 
-/// Represents errors that can occur during Bloom filter operations.
+/// The failures that building a `BloomFilter` (or its hash-function pair) and
+/// estimating its cardinality can return.
 pub type BloomFilterError {
   /// The provided hash functions are equal, which is not allowed.
   EqualHashFunctions
