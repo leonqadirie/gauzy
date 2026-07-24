@@ -37,6 +37,9 @@ pub type BloomFilterError {
   InvalidCapacity
   /// The specified target error rate is invalid (must be between 0.0 and 1.0 exclusively).
   InvalidTargetErrorRate
+  /// The filter is fully saturated (every bit set), so its cardinality
+  /// estimate diverges and cannot be computed.
+  SaturatedFilter
 }
 
 /// A pair of hash functions used by the Bloom filter.
@@ -193,24 +196,38 @@ pub fn hash_fn_count(of filter: BloomFilter(a)) -> Int {
 /// Returns an _approximation_ of unique items inserted into the `BloomFilter`.
 /// This can differ substantially from reality, especially in smaller filters.
 ///
+/// Returns `Error(SaturatedFilter)` when every bit is set: the estimator
+/// diverges as the filter fills, so a fully saturated filter carries no usable
+/// information about how many distinct items produced it.
+///
 /// * `filter`: The `BloomFilter` for which to estimate
-pub fn estimate_cardinality(in filter: BloomFilter(a)) -> Int {
+pub fn estimate_cardinality(
+  in filter: BloomFilter(a),
+) -> Result(Int, BloomFilterError) {
   let set_bits =
     iv.fold(filter.array, 0, fn(total_set_bits, word) {
       total_set_bits + count_set_bits(word)
     })
 
-  // nolint: assert_ok_pattern -- log argument 1.0 -. set_bits/bit_size > 0.0
+  // A fully saturated filter makes the estimator's `float.logarithm` argument
+  // `0.0` (undefined), so there is no finite estimate to return.
+  use <- bool.guard(set_bits >= filter.bit_size, Error(SaturatedFilter))
+
+  // nolint: assert_ok_pattern -- guard above keeps the log argument > 0.0
   let assert Ok(partial_calc) =
     float.logarithm(
       1.0 -. int.to_float(set_bits) /. int.to_float(filter.bit_size),
     )
 
-  -1.0
-  *. int.to_float(filter.bit_size)
-  /. int.to_float(filter.hash_fn_count)
-  *. partial_calc
-  |> float.round
+  Ok(
+    {
+      -1.0
+      *. int.to_float(filter.bit_size)
+      /. int.to_float(filter.hash_fn_count)
+      *. partial_calc
+    }
+    |> float.round,
+  )
 }
 
 /// Returns an empty `BloomFilter` with the same characteristics as the input filter.

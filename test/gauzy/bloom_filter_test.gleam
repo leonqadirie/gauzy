@@ -81,14 +81,14 @@ fn verify_filter(filter: BloomFilter(List(Int)), capacity: Int) -> Nil {
   assert all_items_present(in: filter, with: capacity)
 
   // Estimating is approximate by nature, so allow the count a 1% margin.
-  let estimate = bloom_filter.estimate_cardinality(filter)
+  let assert Ok(estimate) = bloom_filter.estimate_cardinality(filter)
   assert int.absolute_value(estimate - capacity) <= capacity / 100
 
   assert !bloom_filter.might_contain(filter, [capacity, capacity])
 
   let reset_filter = bloom_filter.reset(filter)
   assert no_items_present(in: reset_filter, with: capacity)
-  assert bloom_filter.estimate_cardinality(reset_filter) == 0
+  assert bloom_filter.estimate_cardinality(reset_filter) == Ok(0)
 }
 
 pub fn new_hash_function_pair_test() -> Result(
@@ -175,6 +175,22 @@ pub fn false_positive_rate_holds_up_test() -> Nil {
     bloom_filter.false_positive_rate(filter),
     tolerating: 0.0005,
   )
+}
+
+pub fn estimate_cardinality_saturated_filter_test() -> Nil {
+  // A tiny filter saturates all its bits quickly. `estimate_cardinality` must
+  // report `SaturatedFilter` rather than panic when every bit is set
+  // (regression: the estimator's `float.logarithm(0.0)` argument used to crash
+  // on a full filter).
+  let filter = create_test_filter(1, 0.1)
+
+  let filter =
+    int.range(from: 0, to: 100, with: filter, run: fn(bloom, element) {
+      bloom_filter.insert(bloom, [element])
+    })
+
+  assert bloom_filter.estimate_cardinality(filter)
+    == Error(bloom_filter.SaturatedFilter)
 }
 
 pub fn insert_many_works_test() -> Nil {

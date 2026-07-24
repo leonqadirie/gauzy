@@ -82,7 +82,8 @@ pub fn main() {
   let error_rate = bloom_filter.false_positive_rate(filter)
   let hash_count = bloom_filter.hash_fn_count(filter)
 
-  // Estimate how many unique items were inserted
+  // Estimate how many unique items were inserted. Returns
+  // `Error(SaturatedFilter)` when every bit is set, as the estimate diverges.
   let est_cardinality = bloom_filter.estimate_cardinality(filter)
 
   // Returns an equivalent empty filter
