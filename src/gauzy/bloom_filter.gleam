@@ -19,7 +19,14 @@ import gleam/int
 import gleam/list
 import iv.{type Array}
 
-/// The size of an integer within the array
+/// The number of bits packed into each array word.
+///
+/// Deliberately capped well below the BEAM's ~60-bit fixnum width: on the
+/// JavaScript target ints are IEEE-754 doubles, exact only up to 2^53. Keeping a
+/// word under 2^52 leaves margin so a fully-set word is always an exact `Number`.
+/// (Gleam's JS bitwise ops go through `BigInt`, so the ops themselves are
+/// correct, but the resulting word is still *stored* as a double.) A larger word
+/// would pack more densely on Erlang but silently lose low bits on JS.
 const word_size = 52
 
 /// Represents errors that can occur during Bloom filter operations.
