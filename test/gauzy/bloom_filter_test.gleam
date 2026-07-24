@@ -1,6 +1,7 @@
 import gauzy/bloom_filter.{
   type BloomFilter, type BloomFilterError, type HashFunctionPair,
 }
+import gleam/float
 import gleam/int
 import murmur3a
 
@@ -90,12 +91,22 @@ pub fn new_bloom_filter_test() -> Result(
   let filter = create_test_filter(100, 0.001)
   assert bloom_filter.bit_size(filter) == 1440
   assert bloom_filter.hash_fn_count(filter) == 10
-  assert bloom_filter.false_positive_rate(filter) == 0.0009892969942595967
+  // Compared with a tolerance rather than `==`: floating-point results can
+  // differ in the last ulp across the Erlang and JavaScript targets.
+  assert float.loosely_equals(
+    bloom_filter.false_positive_rate(filter),
+    0.0009892969942595967,
+    tolerating: 1.0e-9,
+  )
 
   let small_filter = create_test_filter(1, 0.1)
   assert bloom_filter.bit_size(small_filter) == 6
   assert bloom_filter.hash_fn_count(small_filter) == 3
-  assert bloom_filter.false_positive_rate(small_filter) == 0.06091618422799686
+  assert float.loosely_equals(
+    bloom_filter.false_positive_rate(small_filter),
+    0.06091618422799686,
+    tolerating: 1.0e-9,
+  )
 
   let hash_fn_pair = hash_function_pair_fixture()
   let assert Error(_) = bloom_filter.new(0, 0.5, hash_fn_pair)
